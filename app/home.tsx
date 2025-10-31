@@ -133,17 +133,22 @@ export default function Home() {
       mounted = false;
     };
   }, []);
+
   const handleAddSession = () => {
     router.push('/newsession');
   }
+
+  const formattedDate = new Date().toLocaleDateString("es-EC", {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
 
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.container}>
 
         <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>Welcome, Roberto !</Text>
-          <Text style={styles.dateText}>Monday, 21 August 2020</Text>
+          <Text style={styles.welcomeText}>Bienvenido, {user?.email?.split("@")[0]} !</Text>
+          <Text style={styles.dateText}>{formattedDate.toLocaleUpperCase()}</Text>
           <TouchableOpacity style={styles.menuIcon}>
             <Text>
               <MaterialCommunityIcons name="dots-vertical" size={36} color="white" />
@@ -193,10 +198,7 @@ export default function Home() {
               title={session.name}
               image={getImageForTrainingType(session.training_type.name)}
               onPress={() =>
-                router.push({
-                  pathname: '/session/[sessionId]',
-                  params: { sessionId: session.id },
-                })
+                router.push(`/session/${session.id}`)
               } />
           ))}
         </View>
@@ -209,8 +211,8 @@ export default function Home() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingTop: 75, // Adjust based on status bar height if needed
     backgroundColor: '#141516',
-    paddingTop: 40, // Adjust based on status bar height if needed
   },
   container: {
     flex: 1,
@@ -320,9 +322,8 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     color: 'white',
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat_400Regular',
   },
   activitySubtitle: {
     color: 'gray',

@@ -29,10 +29,10 @@ export default function LoginScreen() {
       password,
     });
     setLoading(false);
-    if(error) {
-      Alert.alert('Login Error', translateSpanish(error.message));
-    } else { 
-      Alert.alert('Login Success', 'You have successfully logged in!');
+    if (error) {
+      Alert.alert('Error de inicio de sesión', translateSpanish(error.message));
+    } else {
+      Alert.alert('Inicio de sesión exitoso', '¡Has iniciado sesión correctamente!');
       router.replace('/home');
     }
   }

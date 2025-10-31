@@ -1,142 +1,241 @@
+import AnalogChronometer from '@/components/ui/AnalogChronometer';
+import { supabase } from '@/lib/supabase';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
 
-const { width } = Dimensions.get('window');
+interface Exercise {
+  id: string;
+  name: string;
+  description: string | null;
+  muscle_group: string | null;
+  sets: number | null;
+  reps: number | null;
+  weight: number | null;
+  rest_time: number | null;
+  position: number;
+}
+
+const secondsToHMS = (seconds: number) => {
+  const hrs = Math.floor(seconds / 3600) % 12;
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return { hrs, mins, secs };
+};
 
 export default function SessionId() {
+  const router = useRouter();
+  const { sessionId } = useLocalSearchParams();
+
+  // Timer state: counting UP from 0 to duration
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(214); // 03:34 in seconds
-  const [duration, setDuration] = useState<number>(354); // 05:54 in seconds
-  const intervalRef = useRef<number | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(0); // seconds elapsed
+  const [duration, setDuration] = useState<number>(354); // seconds total
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
+  // Drift-free timer refs
+  const endTimeRef = useRef<number | null>(null); // timestamp (ms) when we should hit 'duration'
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const formatTime = (seconds: number): string => {
+  // Formatters
+  const formatMMSS = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  const handlePlayPause = (): void => {
-    if (isPlaying) {
-      // Pause
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
+      deactivateKeepAwake();
+    };
+  }, []);
+
+  // Load session exercises
+  useEffect(() => {
+    const fetchExercises = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('session_exercises')
+          .select(`
+            id,
+            sets,
+            reps,
+            weight,
+            rest_time,
+            position,
+            exercises (
+              id,
+              name,
+              description,
+              muscle_group
+            )
+          `)
+          .eq('session_id', sessionId)
+          .order('position', { ascending: true });
+
+        if (error) throw error;
+
+        if (data) {
+          const formattedExercises: Exercise[] = data.map((item: any) => ({
+            id: item.exercises.id,
+            name: item.exercises.name,
+            description: item.exercises.description,
+            muscle_group: item.exercises.muscle_group,
+            sets: item.sets,
+            reps: item.reps,
+            weight: item.weight,
+            rest_time: item.rest_time,
+            position: item.position,
+          }));
+          setExercises(formattedExercises);
+        }
+      } catch (err) {
+        console.error('Failed to fetch exercises:', err);
+      } finally {
+        setLoading(false);
       }
-      setIsPlaying(false);
-    } else {
-      // Play
-      setIsPlaying(true);
-      intervalRef.current = setInterval(() => {
-        setCurrentTime((prevTime) => {
-          if (prevTime >= duration) {
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
-            }
-            setIsPlaying(false);
-            return duration;
-          }
-          return prevTime + 1;
-        });
-      }, 1000);
+    };
+
+    if (sessionId) {
+      fetchExercises();
+    }
+  }, [sessionId]);
+
+  // Start playback with drift-free loop
+  const start = async () => {
+    if (isPlaying) return;
+    if (currentTime >= duration) return;
+
+    setIsPlaying(true);
+    // compute endTime from remaining seconds
+    const remainingMs = Math.max(0, (duration - currentTime) * 1000);
+    endTimeRef.current = Date.now() + remainingMs;
+
+    try {
+      await activateKeepAwakeAsync();
+    } catch { }
+
+    // update 4x/sec for smooth thumb without overloading
+    tickRef.current = setInterval(() => {
+      const remaining = Math.max(0, (endTimeRef.current ?? Date.now()) - Date.now());
+      const elapsed = duration * 1000 - remaining;
+      const nextSeconds = Math.min(duration, Math.floor(elapsed / 1000));
+      setCurrentTime(nextSeconds);
+
+      if (nextSeconds >= duration) {
+        // complete
+        if (tickRef.current) {
+          clearInterval(tickRef.current);
+          tickRef.current = null;
+        }
+        endTimeRef.current = null;
+        setIsPlaying(false);
+        deactivateKeepAwake();
+      }
+    }, 250); // adjust if you want snappier UI
+  };
+
+  // Pause playback, keep currentTime frozen
+  const pause = () => {
+    if (!isPlaying) return;
+    setIsPlaying(false);
+    endTimeRef.current = null;
+    if (tickRef.current) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+    deactivateKeepAwake();
+  };
+
+  // Toggle play/pause
+  const handlePlayPause = () => {
+    if (isPlaying) pause();
+    else start();
+  };
+
+  // Seek helpers (±10s)
+  const seek = (delta: number) => {
+    const next = Math.min(duration, Math.max(0, currentTime + delta));
+    setCurrentTime(next);
+    // If currently playing, recompute endTime to maintain accuracy
+    if (isPlaying) {
+      const remainingMs = Math.max(0, (duration - next) * 1000);
+      endTimeRef.current = Date.now() + remainingMs;
     }
   };
 
-  const handleRewind = (): void => {
-    setCurrentTime((prevTime) => Math.max(0, prevTime - 10));
-  };
+  const handleRewind = () => seek(-10);
+  const handleForward = () => seek(10);
 
-  const handleForward = (): void => {
-    setCurrentTime((prevTime) => Math.min(duration, prevTime + 10));
-  };
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const { hrs, mins, secs } = secondsToHMS(currentTime); // available if you want HH:MM:SS somewhere
 
-  const progress: number = (currentTime / duration) * 100;
+  const renderExercise = ({ item }: { item: Exercise }) => (
+    <View style={styles.exerciseItem}>
+      <Text style={styles.exerciseTitle}>{item.name}</Text>
+      <Text style={styles.exerciseDetails}>
+        {item.sets} sets x {item.reps} reps {item.weight ? `@ ${item.weight}kg` : ''}
+      </Text>
+      {item.description ? (
+        <Text style={styles.exerciseDescription}>{item.description}</Text>
+      ) : null}
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Meditation Time</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Meditation Time</Text>
+          <View style={styles.placeholder} />
+        </View>
 
-      {/* Illustration Area */}
-      <View style={styles.illustrationContainer}>
-        <View style={styles.illustrationPlaceholder}>
-          <View style={styles.personPlaceholder}>
-            <View style={styles.head} />
-            <View style={styles.body} />
-            <View style={styles.arms} />
-            <View style={styles.legs} />
-          </View>
-          <View style={styles.bottleIcon} />
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+          <AnalogChronometer
+            size={300}
+            durationSec={duration}
+          />
+        </View>
+
+        {/* Bottom: Exercises list */}
+        <View style={styles.exercisesContainer}>
+          {loading ? (
+            <Text style={{ color: '#fff', textAlign: 'center' }}>Loading exercises...</Text>
+          ) : (
+            <FlatList
+              data={exercises}
+              keyExtractor={(item) => item.id}
+              renderItem={renderExercise}
+            />
+          )}
         </View>
       </View>
-
-      {/* Timer Display */}
-      <View style={styles.timerContainer}>
-        <Text style={styles.timerText}>{formatTime(currentTime)}</Text>
-        <Text style={styles.subtitle}>"Rilex your mind and take{'\n'}a slow breathe"</Text>
-      </View>
-
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <Text style={styles.timeLabel}>{formatTime(currentTime)}</Text>
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
-            <View style={[styles.progressThumb, { left: `${progress}%` }]} />
-          </View>
-        </View>
-        <Text style={styles.timeLabel}>{formatTime(duration)}</Text>
-      </View>
-
-      {/* Control Buttons */}
-      <View style={styles.controlsContainer}>
-        <TouchableOpacity style={styles.controlButton} onPress={handleRewind}>
-          <Text style={styles.controlIcon}>⏮</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.playButton} onPress={handlePlayPause}>
-          <Text style={styles.playIcon}>{isPlaying ? '❚❚' : '▶'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.controlButton} onPress={handleForward}>
-          <Text style={styles.controlIcon}>⏭</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Bottom Indicator */}
-      <View style={styles.bottomIndicator} />
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
-    paddingTop: 50,
+    backgroundColor: '#141516',
+    paddingTop: 75,
+    display: 'flex',
+    justifyContent: 'flex-start',
   },
   header: {
     flexDirection: 'row',
@@ -166,70 +265,6 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 44,
-  },
-  illustrationContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 200,
-    marginBottom: 40,
-  },
-  illustrationPlaceholder: {
-    width: width * 0.6,
-    height: 150,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  personPlaceholder: {
-    width: 120,
-    height: 100,
-    position: 'relative',
-  },
-  head: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#e8a598',
-    position: 'absolute',
-    top: 0,
-    left: 10,
-  },
-  body: {
-    width: 50,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#ff6b4a',
-    position: 'absolute',
-    top: 28,
-    left: 0,
-  },
-  arms: {
-    width: 60,
-    height: 15,
-    borderRadius: 8,
-    backgroundColor: '#ff6b4a',
-    position: 'absolute',
-    top: 35,
-    left: -5,
-  },
-  legs: {
-    width: 80,
-    height: 25,
-    borderRadius: 12,
-    backgroundColor: '#5a4f7c',
-    position: 'absolute',
-    top: 65,
-    left: -15,
-  },
-  bottleIcon: {
-    width: 12,
-    height: 30,
-    borderRadius: 4,
-    backgroundColor: '#ff6b4a',
-    position: 'absolute',
-    bottom: 10,
-    left: 20,
-    opacity: 0.8,
   },
   timerContainer: {
     alignItems: 'center',
@@ -283,44 +318,29 @@ const styles = StyleSheet.create({
     top: -6,
     marginLeft: -8,
   },
-  controlsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-    marginBottom: 40,
+  exercisesContainer: {
+    marginBottom: 20,
   },
-  controlButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#e8e8e8',
-    alignItems: 'center',
-    justifyContent: 'center',
+  exerciseItem: {
+    backgroundColor: '#2a2a2a',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 8,
   },
-  controlIcon: {
-    fontSize: 24,
-    color: '#1a1a1a',
+  exerciseTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  playButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e8e8e8',
-    alignItems: 'center',
-    justifyContent: 'center',
+  exerciseDetails: {
+    color: '#ccc',
+    fontSize: 14,
+    marginTop: 4,
   },
-  playIcon: {
-    fontSize: 32,
-    color: '#1a1a1a',
-    marginLeft: 3,
-  },
-  bottomIndicator: {
-    width: 140,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#3a3a3a',
-    alignSelf: 'center',
-    marginTop: 20,
+  exerciseDescription: {
+    color: '#aaa',
+    fontSize: 12,
+    marginTop: 8,
   },
 });
