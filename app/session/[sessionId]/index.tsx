@@ -1,8 +1,7 @@
 import AnalogChronometer from '@/components/ui/AnalogChronometer';
 import { supabase } from '@/lib/supabase';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -33,32 +32,9 @@ const secondsToHMS = (seconds: number) => {
 export default function SessionId() {
   const router = useRouter();
   const { sessionId } = useLocalSearchParams();
-
-  // Timer state: counting UP from 0 to duration
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(0); // seconds elapsed
-  const [duration, setDuration] = useState<number>(354); // seconds total
+  const [duration, setDuration] = useState<number>(354); 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
-  // Drift-free timer refs
-  const endTimeRef = useRef<number | null>(null); // timestamp (ms) when we should hit 'duration'
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Formatters
-  const formatMMSS = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (tickRef.current) clearInterval(tickRef.current);
-      deactivateKeepAwake();
-    };
-  }, []);
 
   // Load session exercises
   useEffect(() => {
@@ -112,74 +88,6 @@ export default function SessionId() {
     }
   }, [sessionId]);
 
-  // Start playback with drift-free loop
-  const start = async () => {
-    if (isPlaying) return;
-    if (currentTime >= duration) return;
-
-    setIsPlaying(true);
-    // compute endTime from remaining seconds
-    const remainingMs = Math.max(0, (duration - currentTime) * 1000);
-    endTimeRef.current = Date.now() + remainingMs;
-
-    try {
-      await activateKeepAwakeAsync();
-    } catch { }
-
-    // update 4x/sec for smooth thumb without overloading
-    tickRef.current = setInterval(() => {
-      const remaining = Math.max(0, (endTimeRef.current ?? Date.now()) - Date.now());
-      const elapsed = duration * 1000 - remaining;
-      const nextSeconds = Math.min(duration, Math.floor(elapsed / 1000));
-      setCurrentTime(nextSeconds);
-
-      if (nextSeconds >= duration) {
-        // complete
-        if (tickRef.current) {
-          clearInterval(tickRef.current);
-          tickRef.current = null;
-        }
-        endTimeRef.current = null;
-        setIsPlaying(false);
-        deactivateKeepAwake();
-      }
-    }, 250); // adjust if you want snappier UI
-  };
-
-  // Pause playback, keep currentTime frozen
-  const pause = () => {
-    if (!isPlaying) return;
-    setIsPlaying(false);
-    endTimeRef.current = null;
-    if (tickRef.current) {
-      clearInterval(tickRef.current);
-      tickRef.current = null;
-    }
-    deactivateKeepAwake();
-  };
-
-  // Toggle play/pause
-  const handlePlayPause = () => {
-    if (isPlaying) pause();
-    else start();
-  };
-
-  // Seek helpers (±10s)
-  const seek = (delta: number) => {
-    const next = Math.min(duration, Math.max(0, currentTime + delta));
-    setCurrentTime(next);
-    // If currently playing, recompute endTime to maintain accuracy
-    if (isPlaying) {
-      const remainingMs = Math.max(0, (duration - next) * 1000);
-      endTimeRef.current = Date.now() + remainingMs;
-    }
-  };
-
-  const handleRewind = () => seek(-10);
-  const handleForward = () => seek(10);
-
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const { hrs, mins, secs } = secondsToHMS(currentTime); // available if you want HH:MM:SS somewhere
 
   const renderExercise = ({ item }: { item: Exercise }) => (
     <View style={styles.exerciseItem}>
@@ -201,7 +109,7 @@ export default function SessionId() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Meditation Time</Text>
+          <Text style={styles.title}>Descanso</Text>
           <View style={styles.placeholder} />
         </View>
 

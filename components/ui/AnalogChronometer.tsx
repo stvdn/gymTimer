@@ -16,61 +16,44 @@ export default function AnalogChronometer({ size = 220, durationSec }: Props) {
   const rafRef = useRef<number | null>(null);
   const baseAccumRef = useRef<number>(0);
 
-  const loop = () => {
-    if (isRunning && lastStartRef.current != null) {
-      const now = Date.now();
-      const runDelta = now - lastStartRef.current;
-      // Render-only: computed elapsed = committed + current-run
-      setElapsedMs(baseAccumRef.current + runDelta);
-    }
-    rafRef.current = requestAnimationFrame(loop);
-  };
-
-  // Mount/unmount RAF
   useEffect(() => {
+    if (!isRunning) return; // Only run when timer is active
+
+    const loop = () => {
+      if (lastStartRef.current != null) {
+        const now = Date.now();
+        const runDelta = now - lastStartRef.current;
+        setElapsedMs(baseAccumRef.current + runDelta);
+      }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
     rafRef.current = requestAnimationFrame(loop);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, []);
+  }, [isRunning]);
 
-  // Controls
   const start = () => {
     if (isRunning) return;
-    // Start a new run from now; do not change baseAccumRef
     lastStartRef.current = Date.now();
-    setIsRunning(true);
+    setIsRunning(true); // This will trigger the useEffect above
   };
 
   const pause = () => {
     if (!isRunning) return;
-    // 1) Stop RAF before changing refs (prevents one more frame using old refs)
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    // 2) Commit the current run into base accum
     if (lastStartRef.current != null) {
-      const now = Date.now();
-      baseAccumRef.current = baseAccumRef.current + (now - lastStartRef.current);
+      baseAccumRef.current += Date.now() - lastStartRef.current;
     }
     lastStartRef.current = null;
-    setIsRunning(false);
-    // 3) Restart RAF loop for future frames
-    rafRef.current = requestAnimationFrame(loop);
+    setIsRunning(false); // This will stop the useEffect loop
   };
 
   const reset = () => {
-    // Fully reset with no pending run
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
     setIsRunning(false);
     lastStartRef.current = null;
     baseAccumRef.current = 0;
     setElapsedMs(0);
-    rafRef.current = requestAnimationFrame(loop);
   };
 
   // Geometry
