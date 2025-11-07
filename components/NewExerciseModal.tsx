@@ -126,8 +126,6 @@ export function NewExerciseModal({ visible, onClose, onSubmit }: NewExerciseModa
     return ok;
   };
 
-  const canSubmit = selectedExercise != null && isPositiveInt(sets) && isPositiveInt(reps) && isPositiveNumber(weight);
-
   const handleSubmit = () => {
     const ok = validateAll();
     if (!ok || !selectedExercise) return;
@@ -233,52 +231,52 @@ export function NewExerciseModal({ visible, onClose, onSubmit }: NewExerciseModa
           </ScrollView>
 
           {/* Required fields */}
-<View style={styles.fieldsBlock}>
-  {/* Sets */}
-  <View style={styles.labelRow}>
-    <Text style={styles.label}>Series*</Text>
-    <TextInput
-      style={styles.labeledInput}
-      placeholder="e.g. 4"
-      placeholderTextColor="#9aa0a6"
-      keyboardType="number-pad"
-      value={sets}
-      onChangeText={(t) => { setSets(t); if (setsErr) setSetsErr(''); }}
-      returnKeyType="done"
-    />
-  </View>
-  {!!setsErr && <Text style={styles.inlineError}>{setsErr}</Text>}
+          <View style={styles.fieldsBlock}>
+            {/* Sets */}
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Series*</Text>
+              <TextInput
+                style={styles.labeledInput}
+                placeholder="e.g. 4"
+                placeholderTextColor="#9aa0a6"
+                keyboardType="number-pad"
+                value={sets}
+                onChangeText={(t) => { setSets(t); if (setsErr) setSetsErr(''); }}
+                returnKeyType="done"
+              />
+            </View>
+            {!!setsErr && <Text style={styles.inlineError}>{setsErr}</Text>}
 
-  {/* Reps */}
-  <View style={styles.labelRow}>
-    <Text style={styles.label}>Repes*</Text>
-    <TextInput
-      style={styles.labeledInput}
-      placeholder="e.g. 12"
-      placeholderTextColor="#9aa0a6"
-      keyboardType="number-pad"
-      value={reps}
-      onChangeText={(t) => { setReps(t); if (repsErr) setRepsErr(''); }}
-      returnKeyType="done"
-    />
-  </View>
-  {!!repsErr && <Text style={styles.inlineError}>{repsErr}</Text>}
+            {/* Reps */}
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Repes*</Text>
+              <TextInput
+                style={styles.labeledInput}
+                placeholder="e.g. 12"
+                placeholderTextColor="#9aa0a6"
+                keyboardType="number-pad"
+                value={reps}
+                onChangeText={(t) => { setReps(t); if (repsErr) setRepsErr(''); }}
+                returnKeyType="done"
+              />
+            </View>
+            {!!repsErr && <Text style={styles.inlineError}>{repsErr}</Text>}
 
-  {/* Peso */}
-  <View style={styles.labelRow}>
-    <Text style={styles.label}>Peso (kg)*</Text>
-    <TextInput
-      style={styles.labeledInput}
-      placeholder="e.g. 30.5"
-      placeholderTextColor="#9aa0a6"
-      keyboardType="decimal-pad"
-      value={weight}
-      onChangeText={(t) => { setWeight(t); if (weightErr) setWeightErr(''); }}
-      returnKeyType="done"
-    />
-  </View>
-  {!!weightErr && <Text style={styles.inlineError}>{weightErr}</Text>}
-</View>
+            {/* Peso */}
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Peso (kg)*</Text>
+              <TextInput
+                style={styles.labeledInput}
+                placeholder="e.g. 30.5"
+                placeholderTextColor="#9aa0a6"
+                keyboardType="decimal-pad"
+                value={weight}
+                onChangeText={(t) => { setWeight(t); if (weightErr) setWeightErr(''); }}
+                returnKeyType="done"
+              />
+            </View>
+            {!!weightErr && <Text style={styles.inlineError}>{weightErr}</Text>}
+          </View>
 
           <TouchableOpacity
             style={[styles.submitButton]}
@@ -405,35 +403,35 @@ const styles = StyleSheet.create({
   },
   inlineError: { color: '#FF6B6B', fontSize: 12, marginBottom: 6 },
   fieldsBlock: {
-  width: '100%',
-  marginTop: 8,
-  marginBottom: 8,
-},
-labelRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  columnGap: 12,
-  backgroundColor: '#2b2b2b',
-  borderRadius: 10,
-  paddingHorizontal: 12,
-  paddingVertical: 10,
-  marginBottom: 6,
-},
-label: {
-  color: '#e6e6e6',
-  fontSize: 16,
-  fontWeight: '600',
-  minWidth: 92, // ensures labels align vertically
-},
-labeledInput: {
-  flex: 1,
-  backgroundColor: '#333',
-  borderRadius: 8,
-  paddingHorizontal: 14,
-  paddingVertical: 12,
-  color: '#fff',
-  fontSize: 18,
-  lineHeight: 22,
-},
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: 12,
+    backgroundColor: '#2b2b2b',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 6,
+  },
+  label: {
+    color: '#e6e6e6',
+    fontSize: 16,
+    fontWeight: '600',
+    minWidth: 92, // ensures labels align vertically
+  },
+  labeledInput: {
+    flex: 1,
+    backgroundColor: '#333',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#fff',
+    fontSize: 18,
+    lineHeight: 22,
+  },
 });

@@ -1,58 +1,109 @@
-// AnalogChronometer.tsx (chronometer with horizontal progress bar under the dial)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, G, Line, Text as SvgText } from 'react-native-svg';
 
 type Props = {
   size?: number;
-  durationSec?: number; // if provided, the bar shows completion vs this target; else it loops per minute
+  durationSec: number;
+  onComplete?: () => void;
 };
 
-export default function AnalogChronometer({ size = 220, durationSec }: Props) {
+export default function StopWatcher({ size = 220, durationSec, onComplete }: Props) {
+  // Running state
   const [isRunning, setIsRunning] = useState(false);
+
+  // Elapsed in ms for display/animation
   const [elapsedMs, setElapsedMs] = useState(0);
 
-  const lastStartRef = useRef<number | null>(null);
+  // Refs for stable timing across re-renders and background
+  const startedAtRef = useRef<number | null>(null);        // wall-clock when last started
+  const accumulatedRef = useRef<number>(0);                // accumulated ms across runs
   const rafRef = useRef<number | null>(null);
-  const baseAccumRef = useRef<number>(0);
+  const completedRef = useRef<boolean>(false);             // prevent double-complete
+  const appStateRef = useRef<string>(AppState.currentState);
 
+  const durationMs = Math.max(0, Math.floor(durationSec * 1000));
+
+  // Compute the “true” elapsed from wall-clock, independent of frames
+  const computeElapsed = () => {
+    const runningDelta = startedAtRef.current != null ? (Date.now() - startedAtRef.current) : 0;
+    return accumulatedRef.current + runningDelta;
+  };
+
+  // Foreground animation loop (for smooth hand movement).
+  // Correctness does not depend on this; it’s only for visual updates while active.
   useEffect(() => {
-    if (!isRunning) return; // Only run when timer is active
-
+    if (!isRunning) return;
     const loop = () => {
-      if (lastStartRef.current != null) {
-        const now = Date.now();
-        const runDelta = now - lastStartRef.current;
-        setElapsedMs(baseAccumRef.current + runDelta);
+      const nowElapsed = computeElapsed();
+      setElapsedMs(nowElapsed);
+      if (!completedRef.current && durationMs > 0 && nowElapsed >= durationMs) {
+        completedRef.current = true;
+        // Snap to exact duration and stop
+        accumulatedRef.current = durationMs;
+        startedAtRef.current = null;
+        setIsRunning(false);
+        setElapsedMs(durationMs);
+        onComplete?.();
+        return; // stop scheduling further frames
       }
       rafRef.current = requestAnimationFrame(loop);
     };
-
     rafRef.current = requestAnimationFrame(loop);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [isRunning]);
+  }, [isRunning, durationMs, onComplete]);
+
+  // Update elapsed on app state transitions so UI reflects true time after backgrounding
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      const prev = appStateRef.current;
+      appStateRef.current = next;
+
+      // When returning to foreground, recompute elapsed and finalize if needed
+      if ((prev === 'background' || prev === 'inactive') && next === 'active') {
+        const nowElapsed = computeElapsed();
+        setElapsedMs(nowElapsed);
+        if (!completedRef.current && durationMs > 0 && nowElapsed >= durationMs) {
+          completedRef.current = true;
+          accumulatedRef.current = durationMs;
+          startedAtRef.current = null;
+          setIsRunning(false);
+          setElapsedMs(durationMs);
+          onComplete?.();
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [durationMs, onComplete]);
 
   const start = () => {
     if (isRunning) return;
-    lastStartRef.current = Date.now();
-    setIsRunning(true); // This will trigger the useEffect above
+    // If already completed, reset first
+    if (completedRef.current) {
+      accumulatedRef.current = 0;
+      completedRef.current = false;
+    }
+    startedAtRef.current = Date.now();
+    setIsRunning(true);
   };
 
   const pause = () => {
     if (!isRunning) return;
-    if (lastStartRef.current != null) {
-      baseAccumRef.current += Date.now() - lastStartRef.current;
+    if (startedAtRef.current != null) {
+      accumulatedRef.current += Date.now() - startedAtRef.current;
     }
-    lastStartRef.current = null;
-    setIsRunning(false); // This will stop the useEffect loop
+    startedAtRef.current = null;
+    setIsRunning(false);
+    setElapsedMs(computeElapsed());
   };
 
   const reset = () => {
     setIsRunning(false);
-    lastStartRef.current = null;
-    baseAccumRef.current = 0;
+    startedAtRef.current = null;
+    accumulatedRef.current = 0;
+    completedRef.current = false;
     setElapsedMs(0);
   };
 
@@ -73,9 +124,9 @@ export default function AnalogChronometer({ size = 220, durationSec }: Props) {
   // Ticks
   const tickLen = (i: number) => (i % 5 === 0 ? r * 0.12 : r * 0.06);
 
-  // Numerals placed inside tick ring (closer to center)
+  // Numerals
   const labelBase = r * 0.72;
-  const labelInset = r * 0.05; // increase to move labels further toward center
+  const labelInset = r * 0.05;
   const labelRadius = Math.max(0, Math.min(r, labelBase - labelInset));
 
   const secondLabels = useMemo(
@@ -90,10 +141,10 @@ export default function AnalogChronometer({ size = 220, durationSec }: Props) {
     [r, labelRadius]
   );
 
-  // Progress bar values
+  // Progress
   const progress01 =
     typeof durationSec === 'number' && durationSec > 0
-      ? Math.min(1, elapsedMs / (durationSec * 1000))
+      ? Math.min(1, elapsedMs / durationMs)
       : (secondsFloat % 60) / 60;
 
   const progressPct = Math.max(0, Math.min(100, Math.round(progress01 * 100)));
@@ -111,17 +162,15 @@ export default function AnalogChronometer({ size = 220, durationSec }: Props) {
     const m = Math.floor(secTotal / 60);
     const s = Math.floor(secTotal % 60);
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }; // [web:146]
+  };
 
   const leftLabel = formatMMSS(secondsFloat); // elapsed in mm:ss
-  const rightLabel =
-    typeof durationSec === 'number' && durationSec > 0
-      ? formatMMSS(durationSec)
-      : '01:00';
+  const rightLabel = formatMMSS(durationSec);
 
   return (
     <View style={styles.root}>
       <Svg width={size} height={size}>
+
         {/* Face */}
         <Circle cx={cx} cy={cy} r={r} fill="#141516" />
 
@@ -180,10 +229,9 @@ export default function AnalogChronometer({ size = 220, durationSec }: Props) {
         {/* Center cap */}
         <Circle cx={cx} cy={cy} r={5} fill="#ffffff" />
       </Svg>
-      {typeof durationSec === 'number' && durationSec > 0 && (
-        <Text style={styles.helper}>{progressPct}% completado</Text>
-      )}
-      {/* Progress Bar (under chronometer) */}
+
+
+      {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <Text style={styles.timeLabel}>{leftLabel}</Text>
         <View style={styles.progressBarContainer}>
@@ -194,6 +242,7 @@ export default function AnalogChronometer({ size = 220, durationSec }: Props) {
         </View>
         <Text style={styles.timeLabel}>{rightLabel}</Text>
       </View>
+
       {/* Controls */}
       <View style={styles.controls}>
         <TouchableOpacity onPress={isRunning ? pause : start} style={styles.btn}>
@@ -205,9 +254,18 @@ export default function AnalogChronometer({ size = 220, durationSec }: Props) {
       </View>
 
 
+      {/*
+
+      {typeof durationSec === 'number' && durationSec > 0 && (
+        <Text style={styles.helper}>{progressPct}% completado</Text>
+      )}
+*/}
+
+
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   root: { alignItems: 'center' },
@@ -223,7 +281,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 30,
-    marginVertical: 16,
+    marginTop: 16,
+    marginBottom: 8,
     width: '100%',
   },
   timeLabel: {
@@ -275,6 +334,5 @@ const styles = StyleSheet.create({
   },
   helper: {
     color: '#fff',
-    marginVertical: 16,
   },
 });
