@@ -4,21 +4,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useContext, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  StyleSheet,
-  Text,
-  View
+    ActivityIndicator,
+    FlatList,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
-import { AuthContext, AuthProvider } from '../context/AuthContext';
-import Home from './home';
+import { AuthContext, AuthProvider } from '../../context/AuthContext';
+import Home from '../home';
 
 
 const images = [
-  require('../assets/images/home.png'),
-  require('../assets/images/home2.png'),
-  require('../assets/images/home3.png'),
+  require('../../assets/images/home.png'),
+  require('../../assets/images/home2.png'),
+  require('../../assets/images/home3.png'),
 ];
 
 const slides = [
@@ -155,15 +154,12 @@ export default function App() {
   );
 }
 
-const { width } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   background: {
     justifyContent: 'flex-end',
-    width,
     alignItems: 'center',
   },
   gradient: {

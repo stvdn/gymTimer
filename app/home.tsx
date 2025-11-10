@@ -1,9 +1,8 @@
 import SessionCard from '@/components/ui/SessionCard';
 import { supabase } from '@/lib/supabase';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { LinearGradient } from 'expo-linear-gradient'; // Assuming use of Expo/LinearGradient
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -77,6 +76,7 @@ export default function Home() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedType, setSelectedType] = useState<string>('Todos');
 
   useEffect(() => {
     let mounted = true;
@@ -142,6 +142,19 @@ export default function Home() {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
+  const types = useMemo(() => {
+    const set = new Set<string>();
+    sessions.forEach(s => {
+      if (s.training_type?.name) set.add(s.training_type.name);
+    });
+    return ['Todos', ...Array.from(set)];
+  }, [sessions]);
+
+  const sessionsFiltered = useMemo(() => {
+    if (selectedType === 'Todos') return sessions;
+    return sessions.filter(s => s.training_type?.name === selectedType);
+  }, [sessions, selectedType]);
+
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.container}>
@@ -149,14 +162,9 @@ export default function Home() {
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>Bienvenido, {user?.email?.split("@")[0]} !</Text>
           <Text style={styles.dateText}>{formattedDate.toLocaleUpperCase()}</Text>
-          <TouchableOpacity style={styles.menuIcon}>
-            <Text>
-              <MaterialCommunityIcons name="dots-vertical" size={36} color="white" />
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        {/* --- Current Status Card --- */}
+        {/* --- Current Status Card --- 
         <LinearGradient
           colors={['#1a1a1a', '#000000']} // Dark gradient approximation
           style={styles.statusCard}>
@@ -177,13 +185,39 @@ export default function Home() {
             </View>
           </View>
         </LinearGradient>
+        */}
+
+        {/* NEW: Horizontal filter badges/chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+        >
+          {types.map((type) => {
+            const active = selectedType === type;
+            return (
+              <TouchableOpacity
+                key={type}
+                onPress={() => setSelectedType(type)}
+                activeOpacity={0.8}
+                style={[
+                  styles.chip,
+                  active && styles.chipActive
+                ]}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {type}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {/* --- Activity Section --- */}
         <View style={styles.activitySection}>
           <View style={styles.sessionContainer}>
             <View style={{ flexDirection: 'column' }}>
               <Text style={styles.activityTitle}>Sesiones Entrenamiento</Text>
-
               <Text style={styles.activitySubtitle}>Elige tu sesisón</Text>
             </View>
             <TouchableOpacity style={styles.addButton} onPress={handleAddSession} activeOpacity={0.7}>
@@ -192,7 +226,7 @@ export default function Home() {
           </View>
 
           {/* Activity Cards */}
-          {sessions.map((session, index) => (
+          {sessionsFiltered.map((session, index) => (
             <SessionCard
               key={index}
               title={session.name}
@@ -211,7 +245,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    paddingTop: 75, // Adjust based on status bar height if needed
+    paddingTop: 75, 
     backgroundColor: '#141516',
   },
   container: {
@@ -231,8 +265,6 @@ const styles = StyleSheet.create({
   },
   // Welcome Section
   welcomeSection: {
-    marginBottom: 20,
-    position: 'relative',
     paddingHorizontal: 5,
   },
   welcomeText: {
@@ -380,5 +412,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start'
-  }
+  },
+  chipsRow: {
+    paddingVertical: 20,
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#2b2b2b',
+  },
+  chipActive: {
+    backgroundColor: '#F34E3A',
+    borderColor: 'white',
+  },
+  chipText: {
+    color: '#d4d4d4',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  chipTextActive: {
+    color: 'white',
+  },
 });

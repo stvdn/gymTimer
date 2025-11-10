@@ -193,8 +193,7 @@ export default function SessionId() {
 
     const curProg = progress[ex.id] ?? { exerciseId: ex.id, currentSet: 0, totalSets: ex.sets ?? 0 };
     const willBeSet = Math.min(curProg.currentSet + 1, curProg.totalSets);
-
-    if (willBeSet < (ex.sets ?? 0)) {
+    if (willBeSet < curProg.totalSets) {
       // More sets for this exercise
       const nextRest = currentRestSec;
       setDuration(nextRest);
@@ -213,14 +212,16 @@ export default function SessionId() {
         ? nextExercise.rest_time
         : FALLBACK_REST;
       setDuration(nextRest);
-      setWatcherKey(prev => prev + 1); // force remount [web:66][web:70]
+      setWatcherKey(prev => prev + 1); // force remount 
       await cancelScheduledNotification();
       scheduleEndOfRestNotification(nextRest);
     } else {
       // Workout complete
+      setActiveExerciseIdx(-1);
+      setDuration(0);
+      setWatcherKey(prev => prev + 1); // force remount 
       await cancelScheduledNotification();
-      console.log('Workout complete!');
-      // Optional: router.replace('/session/complete');
+      router.replace('/home');
     }
   };
 
@@ -235,8 +236,9 @@ export default function SessionId() {
           Set {(progress[currentExercise.id].currentSet) + 1} de {progress[currentExercise.id].totalSets}
         </Text>
         <Text style={styles.motivationalText}>
-          {}
-          Toma aire, tu próximo reto te espera 👇
+        {currentExercise.position === exercises.length - 1
+          ? '¡Último ejercicio! ¡Da lo mejor de ti!'
+          : 'Toma aire, tu próximo reto te espera 👇'}  
         </Text>
       </View>
       </>
