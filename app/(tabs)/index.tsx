@@ -4,14 +4,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useContext, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    View
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 import { AuthContext, AuthProvider } from '../../context/AuthContext';
-import Home from '../home';
+import Home from '../Home';
 
 
 const images = [
@@ -50,7 +50,7 @@ function OnboardingScreen() {
     if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
     } else {
-      router.push('/login');
+      router.push('/Login');
     }
   };
 

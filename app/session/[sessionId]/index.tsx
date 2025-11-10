@@ -221,7 +221,7 @@ export default function SessionId() {
       setDuration(0);
       setWatcherKey(prev => prev + 1); // force remount 
       await cancelScheduledNotification();
-      router.replace('/home');
+      router.replace('/Home');
     }
   };
 

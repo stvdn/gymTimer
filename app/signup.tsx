@@ -60,7 +60,7 @@ export default function SignupScreen() {
         'Registro exitoso',
         '¡Cuenta creada! Por favor revisa tu correo electrónico para confirmar tu cuenta.' // Traducción al español
       );
-      router.replace('/login');
+      router.replace('/Login');
     }
   };
 
@@ -116,7 +116,7 @@ export default function SignupScreen() {
         <SocialButton icon={googleIcon} onPress={() => console.log('Google Login')} />
         <SocialButton icon={twitterIcon} onPress={() => console.log('Twitter Login')} />
       </View>
-      <TouchableOpacity onPress={() => router.push('/login')}>
+      <TouchableOpacity onPress={() => router.push('/Login')}>
         <Text style={styles.hasAccount}>¿Ya tienes una cuenta? <Text style={styles.underline}>Ingresar</Text></Text>
       </TouchableOpacity>
     </ScrollView>

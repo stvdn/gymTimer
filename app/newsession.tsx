@@ -141,7 +141,7 @@ export default function NewSession(): React.ReactElement {
 
       Alert.alert('Éxito', 'Sesión guardada correctamente')
       setExercises([])
-      router.replace('/home')
+      router.replace('/Home')
 
     } catch (err) {
       console.error(err)

@@ -33,7 +33,7 @@ export default function LoginScreen() {
       Alert.alert('Error de inicio de sesión', translateSpanish(error.message));
     } else {
       Alert.alert('Inicio de sesión exitoso', '¡Has iniciado sesión correctamente!');
-      router.replace('/home');
+      router.replace('/Home');
     }
   }
 
@@ -92,7 +92,7 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.linksContainer}>
-        <TouchableOpacity onPress={() => router.push('/signup')}>
+        <TouchableOpacity onPress={() => router.push('/SignUp')}>
           <Text style={styles.linkText}>Eres nuevo? <Text style={styles.linkUnderline}>Registrate</Text></Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => console.log('Forgot Password')}>

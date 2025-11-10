@@ -89,7 +89,7 @@ export default function Home() {
         if (userError) throw userError;
         if (!user) {
           Alert.alert('Error', 'No estás autenticado');
-          router.replace('/login');
+          router.replace('/Login');
           return;
         }
 
@@ -135,7 +135,7 @@ export default function Home() {
   }, []);
 
   const handleAddSession = () => {
-    router.push('/newsession');
+    router.push('/NewSession');
   }
 
   const formattedDate = new Date().toLocaleDateString("es-EC", {
