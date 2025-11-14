@@ -1,5 +1,4 @@
-// components/ui/Button.tsx
-import { StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
 
 type ButtonProps = {
   title: string;
@@ -8,6 +7,7 @@ type ButtonProps = {
   textColor?: string;
   disabled?: boolean;
   buttonStyle?: ViewStyle;
+  loading?: boolean;        // <-- add this
 };
 
 export default function Button({
@@ -17,18 +17,26 @@ export default function Button({
   textColor = '#F34E3A',
   disabled = false,
   buttonStyle = {},
+  loading = false,          // <-- default
 }: ButtonProps) {
+  const isDisabled = disabled || loading;
+
   return (
     <TouchableOpacity
       style={[
         styles.button,
         { backgroundColor: backgroundColorProp },
-        buttonStyle
+        buttonStyle,
       ]}
       onPress={onPress}
-      disabled={disabled}
+      disabled={isDisabled}
+      activeOpacity={0.8}
     >
-      <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={textColor} />
+      ) : (
+        <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -41,6 +49,8 @@ const styles = StyleSheet.create({
     borderColor: '#F34E3A',
     borderWidth: 2,
     width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
     fontSize: 16,

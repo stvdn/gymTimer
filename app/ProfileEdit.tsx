@@ -4,7 +4,15 @@ import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 const COLORS = {
   bg: '#141516',
@@ -68,7 +76,7 @@ export default function ProfileEditScreen() {
         setMobile(profile?.phone ?? '');
         setDob(profile?.dob ?? '');
         setWeight(profile?.weight != null ? String(profile.weight) : '');
-        setHeight(profile?.height ?? '');
+        setHeight(profile?.height != null ? String(profile.height) : '');
       } catch (e: any) {
         console.warn(e);
         Alert.alert('Error', 'No se pudo cargar el perfil.');
@@ -82,6 +90,16 @@ export default function ProfileEditScreen() {
     };
   }, []);
 
+  const parseOptNumber = (s: string) => {
+    // Accepts "", "  ", "123", "123.4", "123,4"
+    const trimmed = (s ?? '').trim();
+    if (trimmed === '') return null;
+    // Normalize comma to dot for decimals
+    const normalized = trimmed.replace(',', '.');
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : null;
+  };
+
   const onUpdate = async () => {
     if (!authUserId) {
       Alert.alert('Sesión', 'No hay usuario autenticado.');
@@ -91,15 +109,15 @@ export default function ProfileEditScreen() {
     try {
       setLoading(true);
 
-      // Upsert/update into users table scoped by auth uid
       const updates = {
         id: authUserId,
         name: name || null,
         email: email || null,
         phone: mobile || null,
         dob: dob || null,
-        weight: weight || null,
-        height: height || null,
+        // Convert from TextInput string state to numbers/null
+        weight: parseOptNumber(weight),
+        height: parseOptNumber(height),
         updated_at: new Date().toISOString(),
       };
 
@@ -116,7 +134,11 @@ export default function ProfileEditScreen() {
   };
 
   return (
-    <View style={styles.safeArea}>
+    <KeyboardAvoidingView
+      style={styles.safeArea}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} // tune this offset
+    >
       <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
         <Header title="Editar Perfil" />
         <View style={styles.card}>
@@ -179,10 +201,11 @@ export default function ProfileEditScreen() {
             textColor={COLORS.white}
             buttonStyle={{ marginTop: 20 }}
             onPress={onUpdate}
+            loading={loading}
           />
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
