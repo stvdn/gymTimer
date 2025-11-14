@@ -1,5 +1,6 @@
 import Header from '@/components/ui/Header';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
@@ -7,6 +8,7 @@ import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler
 const AVATAR_URI = 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=400&auto=format&fit=crop';
 
 export default function SettingsScreen() {
+    const router = useRouter();
 
     return (
         <GestureHandlerRootView style={styles.safeArea}>
@@ -28,21 +30,21 @@ export default function SettingsScreen() {
 
                 {/* Menu list */}
                 <ScrollView style={styles.menu}>
-                    <MenuItem icon="account-circle" label="Perfil" />
+                    <MenuItem icon="account-circle" label="Perfil" onPress={()=>router.push("/ProfileEdit")} />
                     {/*<MenuItem icon="star-circle" label="Favorito" />*/}
-                    <MenuItem icon="shield-lock" label="Política de Privacidad" />
+                    <MenuItem icon="shield-lock" label="Política de Privacidad" onPress={()=>console.log("click")} />
                     {/*<MenuItem icon="cog" label="Configuración" />*/}
-                    <MenuItem icon="help-circle" label="Ayuda" />
-                    <MenuItem icon="logout" label="Cerrar Sesión" />
+                    <MenuItem icon="help-circle" label="Ayuda" onPress={()=>console.log("click")} />
+                    <MenuItem icon="logout" label="Cerrar Sesión" onPress={()=>console.log("click")} />
                 </ScrollView>
             </View>
         </GestureHandlerRootView>
     );
 }
 
-function MenuItem({ icon, label }: { icon: any; label: string }) {
+function MenuItem({ icon, label, onPress }: { icon: any; label: string, onPress: () => void }) {
     return (
-        <TouchableOpacity activeOpacity={0.8} style={styles.menuItem}>
+        <TouchableOpacity activeOpacity={0.8} style={styles.menuItem} onPress={onPress}>
             <View style={styles.menuIconWrap}>
                 <MaterialCommunityIcons name={icon} size={22} color="#FFFFFF" />
             </View>
@@ -52,11 +54,10 @@ function MenuItem({ icon, label }: { icon: any; label: string }) {
     );
 }
 
-const PURPLE = '#F34E3A';      // Light lavender header
-const PURPLE_DARK = '#F34E3A'; // Slightly deeper for accents
-const CARD = '#1a1a1a';        // Menu background
-const WHITE = '#FFFFFF';       // Text
-const MUTED = '#CFCFE5';       // Subtext on purple
+const PRIMARY = '#F34E3A';      
+const CARD = '#1a1a1a';        
+const WHITE = '#FFFFFF';       
+const MUTED = '#CFCFE5';      
 
 const styles = StyleSheet.create({
     safeArea: {
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
         borderRadius: 100,
         alignSelf: 'center',
         borderWidth: 3,
-        borderColor: PURPLE_DARK,
+        borderColor: PRIMARY,
     },
     name: {
         color: WHITE,
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
         left: 20,
         right: 20,
         bottom: -26,
-        backgroundColor: PURPLE_DARK,
+        backgroundColor: PRIMARY,
         borderRadius: 14,
         paddingVertical: 10,
         paddingHorizontal: 12,
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
         width: 34,
         height: 34,
         borderRadius: 17,
-        backgroundColor: PURPLE_DARK,
+        backgroundColor: PRIMARY,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
         right: 10,
         bottom: 10,
         height: 58,
-        backgroundColor: PURPLE,
+        backgroundColor: PRIMARY,
         borderRadius: 16,
         flexDirection: 'row',
         alignItems: 'center',

@@ -16,7 +16,7 @@ export default function Button({
   backgroundColorProp = '#140702',
   textColor = '#F34E3A',
   disabled = false,
-  buttonStyle = {}
+  buttonStyle = {},
 }: ButtonProps) {
   return (
     <TouchableOpacity
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   text: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
   },

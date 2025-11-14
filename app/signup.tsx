@@ -9,8 +9,6 @@ import translateSpanish from '../lib/translator';
 
 const dumbbeLeft = require('../assets/images/login/gym3.png');
 const dumbbeRight = require('../assets/images/login/gym4.png');
-const userIcon = require('../assets/images/login/user-shape.png');
-const lockIcon = require('../assets/images/login/padlock.png');
 const facebookIcon = require('../assets/images/login/facebook.png');
 const googleIcon = require('../assets/images/login/google.png');
 const twitterIcon = require('../assets/images/login/twitter.png');
@@ -85,18 +83,18 @@ export default function SignupScreen() {
 
       <View style={styles.formContainer}>
         <Input
-          icon={userIcon}
+          name="user"
           placeholder="Correo"
           onChangeText={setEmail}
         />
         <Input
-          icon={lockIcon}
+          name="lock"
           placeholder="Clave"
           secureTextEntry={true}
           onChangeText={setPassword}
         />
         <Input
-          icon={lockIcon}
+          name="lock"
           placeholder="Confirmar Clave"
           secureTextEntry={true}
           onChangeText={setConfirmPassword}

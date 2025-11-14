@@ -1,24 +1,41 @@
-// components/ui/Input.tsx
-import { Image, ImageSourcePropType, StyleSheet, TextInput, View } from 'react-native';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import type { ComponentProps } from 'react';
+import { useState } from 'react';
+import { StyleSheet, TextInput, View } from 'react-native';
 
 type InputProps = {
-  icon: ImageSourcePropType;
+  name: ComponentProps<typeof FontAwesome6>['name'];
+  size?: ComponentProps<typeof FontAwesome6>['size'];
+  color?: ComponentProps<typeof FontAwesome6>['color'];
   placeholder: string;
   value?: string;
   onChangeText?: (text: string) => void;
   secureTextEntry?: boolean;
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
 };
 
 export default function Input({
-  icon,
+  name,
   placeholder,
   value,
   onChangeText,
   secureTextEntry = false,
+  keyboardType = 'default',
+  size = 18,
+  color = '#555555',
 }: InputProps) {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
-    <View style={styles.inputContainer}>
-      <Image source={icon} style={styles.inputIcon} />
+    <View
+      style={[
+        styles.inputContainer,
+        isFocused && styles.inputContainerFocused, // dynamic style
+      ]}
+    >
+      <View style={{ width: 24, alignItems: 'center', marginLeft: 5 }}>
+        <FontAwesome6 name={name} size={size} color={color} />
+      </View>
       <TextInput
         style={styles.input}
         placeholder={placeholder}
@@ -26,6 +43,9 @@ export default function Input({
         value={value}
         onChangeText={onChangeText}
         secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
       />
     </View>
   );
@@ -40,17 +60,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginVertical: 10,
     height: 60,
+    borderWidth: 2,
+    borderColor: 'transparent', // default border
   },
-  inputIcon: {
-    width: 20,
-    height: 20,
-    marginLeft: 10,
-    marginRight: 20,
-    tintColor: '#555555',
+  inputContainerFocused: {
+    borderColor: '#F34E3A', // border color when focused
   },
   input: {
     flex: 1,
     color: '#555555',
     fontSize: 16,
+    marginLeft: 12,
   },
 });
