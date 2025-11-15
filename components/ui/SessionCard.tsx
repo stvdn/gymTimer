@@ -1,11 +1,13 @@
 import { Image, ImageSource } from 'expo-image';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
-interface SesssionCardProps {
+interface SessionCardProps {
   title: string;
-  image: ImageSource;  
+  image: ImageSource;
   onPress?: () => void;
   style?: ViewStyle;
+  rightActions?: React.ReactNode; // NEW: optional actions area
 }
 
 export default function SessionCard({
@@ -13,15 +15,23 @@ export default function SessionCard({
   image,
   onPress,
   style,
-}: SesssionCardProps) {
+  rightActions,
+}: SessionCardProps) {
   return (
     <TouchableOpacity style={[styles.activityCard, style]} onPress={onPress}>
-      <Image source={image} contentFit='cover' style={styles.activityImage} />
-      <View
-        style={styles.overlay}
-      >
+      <Image source={image} contentFit="cover" style={styles.activityImage} />
+
+      {/* Overlay/“footer” preserved */}
+      <View style={styles.overlay}>
+        {/* Title left + actions right */}
         <View style={styles.activityTextContainer}>
           <Text style={styles.activityText}>{title}</Text>
+
+          {rightActions && (
+            <View style={styles.actionsRow}>
+              {rightActions}
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -34,7 +44,7 @@ const styles = StyleSheet.create({
     aspectRatio: 2,
     borderRadius: 10,
     overflow: 'hidden',
-    marginBottom: 15,  
+    marginBottom: 15,
   },
   activityImage: {
     width: '100%',
@@ -47,14 +57,22 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   activityTextContainer: {
+    flexDirection: 'row',          
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)', // translucent white overlay
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
   },
   activityText: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
     fontFamily: 'Montserrat_600SemiBold',
+    flex: 1,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
   },
 });

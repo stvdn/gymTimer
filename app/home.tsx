@@ -218,7 +218,7 @@ export default function Home() {
           <View style={styles.sessionContainer}>
             <View style={{ flexDirection: 'column' }}>
               <Text style={styles.activityTitle}>Sesiones Entrenamiento</Text>
-              <Text style={styles.activitySubtitle}>Elige tu sesisón</Text>
+              <Text style={styles.activitySubtitle}> Elige tu sesión 👇 o agrega una sesión 👉</Text>
             </View>
             <TouchableOpacity style={styles.addButton} onPress={handleAddSession} activeOpacity={0.7}>
               <MaterialCommunityIcons name="plus-thick" size={28} color="white" />
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
   },
   activitySubtitle: {
     color: 'gray',
-    fontSize: 14,
+    fontSize: 12,
     marginBottom: 15,
     marginTop: 5,
   },
