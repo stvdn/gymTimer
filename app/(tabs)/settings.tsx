@@ -87,13 +87,23 @@ export default function SettingsScreen() {
   const avatarUrl = getAvatarUrlFromName(profile?.name);
 
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.replace('/Login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <GestureHandlerRootView style={styles.safeArea}>
       <View>
         <Header title="Configuraciónes" showBackButton={false} />
 
         {/* Avatar */}
-        <Image source={{ uri: avatarUrl  }} style={styles.avatar} />
+        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
 
         {/* Name + email + birthday */}
         <View style={{ alignItems: 'center', marginTop: 12 }}>
@@ -126,7 +136,7 @@ export default function SettingsScreen() {
             onPress={() => console.log('click')}
           />
           <MenuItem icon="help-circle" label="Ayuda" onPress={() => console.log('click')} />
-          <MenuItem icon="logout" label="Cerrar Sesión" onPress={() => console.log('click')} />
+          <MenuItem icon="logout" label="Cerrar Sesión" onPress={handleLogout} />
         </ScrollView>
       </View>
     </GestureHandlerRootView>

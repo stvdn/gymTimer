@@ -8,6 +8,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -51,6 +53,12 @@ interface UserProfileRow {
   height: number | null;
 }
 
+interface HistoryItem {
+  id: string;
+  weight: number | null;
+  height: number | null;
+  created_at: string;
+}
 
 export default function Notebook() {
   const router = useRouter();
@@ -67,6 +75,11 @@ export default function Notebook() {
   const [editSessionId, setEditSessionId] = useState<string | null>(null);
   const [editSessionName, setEditSessionName] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
+
+  // History state
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [historyData, setHistoryData] = useState<HistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -211,23 +224,48 @@ export default function Notebook() {
     try {
       setSavingProfile(true);
 
+      const weightVal = parseOptNumber(weightInput);
+      const heightVal = parseOptNumber(heightInput);
+
+      if (weightVal === profile.weight && heightVal === profile.height) {
+        Alert.alert('Sin cambios', 'No hay cambios para guardar.');
+        return;
+      }
+
       const updates = {
         id: profile.id,
-        weight: parseOptNumber(weightInput),
-        height: parseOptNumber(heightInput),
+        weight: weightVal,
+        height: heightVal,
         updated_at: new Date().toISOString(),
       };
 
+      // 1. Update users table
       const { error } = await supabase
         .from('users')
         .update({
-          weight: parseOptNumber(weightInput),
-          height: parseOptNumber(heightInput),
+          weight: weightVal,
+          height: heightVal,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', profile.id); 
+        .eq('id', profile.id);
 
       if (error) throw error;
+
+      // 2. Insert into history table
+      // We do this silently; if it fails, we might just log it or ignore, 
+      // but ideally we want it to succeed.
+      const { error: historyError } = await supabase
+        .from('user_measurements_history')
+        .insert({
+          user_id: profile.id,
+          weight: weightVal,
+          height: heightVal,
+        });
+
+      if (historyError) {
+        console.error('Error saving history:', historyError);
+        // Optional: Alert user or just proceed
+      }
 
       setProfile((prev) =>
         prev
@@ -248,13 +286,61 @@ export default function Notebook() {
     }
   };
 
+  const fetchHistory = async () => {
+    if (!profile) return;
+    try {
+      setLoadingHistory(true);
+      const { data, error } = await supabase
+        .from('user_measurements_history')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setHistoryData(data || []);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'No se pudo cargar el historial');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const openHistoryModal = () => {
+    setHistoryModalVisible(true);
+    fetchHistory();
+  };
+
+  const renderHistoryItem = ({ item }: { item: HistoryItem }) => {
+    const date = new Date(item.created_at).toLocaleDateString();
+    return (
+      <View style={styles.historyItem}>
+        <Text style={styles.historyDate}>{date}</Text>
+        <View style={styles.historyValues}>
+          <Text style={styles.historyText}>
+            Peso: <Text style={styles.historyValue}>{item.weight ?? '—'} kg</Text>
+          </Text>
+          <Text style={styles.historyText}>
+            Altura: <Text style={styles.historyValue}>{item.height ?? '—'} cm</Text>
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <GestureHandlerRootView style={styles.safeArea}>
       <Header title="Libreta" showBackButton={false} />
       <ScrollView style={styles.container}>
         {/* Quick access weight/height */}
         <View style={styles.metricsCard}>
-          <Text style={styles.metricsTitle}>Acceso Rapido</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={styles.metricsTitle}>Mis Medidas</Text>
+            <TouchableOpacity onPress={openHistoryModal}>
+              <Text style={styles.historyLink}>Ver historial</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.metricsRow}>
             <View style={styles.metricField}>
               <Text style={styles.metricLabel}>Peso (kg)</Text>
@@ -387,6 +473,7 @@ export default function Notebook() {
           </View>
         )}
       </ScrollView>
+
       <EditSessionExercisesModal
         visible={editModalVisible}
         sessionId={editSessionId}
@@ -397,9 +484,40 @@ export default function Notebook() {
         }}
         onSaved={() => {
           // optional: re-fetch sessions or just leave as is
-          // fetchData() if you extract it out of useEffect
         }}
       />
+
+      {/* History Modal */}
+      <Modal
+        visible={historyModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setHistoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Historial de Medidas</Text>
+              <TouchableOpacity onPress={() => setHistoryModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingHistory ? (
+              <ActivityIndicator size="large" color="#F34E3A" style={{ marginTop: 20 }} />
+            ) : historyData.length === 0 ? (
+              <Text style={styles.emptyText}>No hay historial disponible.</Text>
+            ) : (
+              <FlatList
+                data={historyData}
+                keyExtractor={(item) => item.id}
+                renderItem={renderHistoryItem}
+                contentContainerStyle={styles.historyList}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
 
     </GestureHandlerRootView>
   );
@@ -513,7 +631,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   metricsCard: {
-    backgroundColor: '#1f2933',
+    backgroundColor: '#242424',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -523,7 +641,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+  },
+  historyLink: {
+    color: '#F34E3A',
+    fontSize: 14,
+    fontWeight: '600',
   },
   metricsRow: {
     flexDirection: 'row',
@@ -540,11 +662,11 @@ const styles = StyleSheet.create({
   },
   metricInputWrapper: {
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#374151',
+    // borderWidth: 1, // Removed border to match modal style preference usually
+    // borderColor: '#374151',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: '#111827',
+    backgroundColor: '#333', // Darker background for input
   },
   metricInput: {
     color: 'white',
@@ -559,6 +681,58 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 4,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    maxHeight: '80%',
+    backgroundColor: '#242424', // Match modal background
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  historyList: {
+    paddingBottom: 20,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333', // Darker separator
+  },
+  historyDate: {
+    color: '#9ca3af',
+    fontSize: 14,
+  },
+  historyValues: {
+    alignItems: 'flex-end',
+  },
+  historyText: {
+    color: '#d1d5db',
+    fontSize: 14,
+  },
+  historyValue: {
+    color: 'white',
+    fontWeight: '600',
   },
 
 });
