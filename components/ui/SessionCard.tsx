@@ -7,7 +7,8 @@ interface SessionCardProps {
   image: ImageSource;
   onPress?: () => void;
   style?: ViewStyle;
-  rightActions?: React.ReactNode; // NEW: optional actions area
+  rightActions?: React.ReactNode;
+  disabled?: boolean;
 }
 
 export default function SessionCard({
@@ -16,9 +17,10 @@ export default function SessionCard({
   onPress,
   style,
   rightActions,
+  disabled = false,
 }: SessionCardProps) {
   return (
-    <TouchableOpacity style={[styles.activityCard, style]} onPress={onPress}>
+    <TouchableOpacity style={[styles.activityCard, style]} onPress={onPress} disabled={disabled}>
       <Image source={image} contentFit="cover" style={styles.activityImage} />
 
       {/* Overlay/“footer” preserved */}

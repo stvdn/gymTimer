@@ -1,3 +1,5 @@
+import EditSessionExercisesModal from '@/components/EditSessionExercisesModal';
+import Header from '@/components/ui/Header';
 import SessionCard from '@/components/ui/SessionCard';
 import { supabase } from '@/lib/supabase';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -49,6 +51,7 @@ interface UserProfileRow {
   height: number | null;
 }
 
+
 export default function Notebook() {
   const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -60,6 +63,10 @@ export default function Notebook() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [weightInput, setWeightInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
+
+  const [editSessionId, setEditSessionId] = useState<string | null>(null);
+  const [editSessionName, setEditSessionName] = useState('');
+  const [editModalVisible, setEditModalVisible] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -147,9 +154,10 @@ export default function Notebook() {
     return sessions.filter((s) => s.training_type?.name === selectedType);
   }, [sessions, selectedType]);
 
-  const handleEdit = (sessionId: string) => {
-    // You can route to an EditSession screen, e.g. /session/edit/[id]
-    router.push(`/session/${sessionId}`); // or `/EditSession/${sessionId}`
+  const openEditModal = (sessionId: string, sessionName: string) => {
+    setEditSessionId(sessionId);
+    setEditSessionName(sessionName);
+    setEditModalVisible(true);
   };
 
   const handleDelete = (sessionId: string) => {
@@ -212,7 +220,12 @@ export default function Notebook() {
 
       const { error } = await supabase
         .from('users')
-        .upsert(updates, { onConflict: 'id' });
+        .update({
+          weight: parseOptNumber(weightInput),
+          height: parseOptNumber(heightInput),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', profile.id); 
 
       if (error) throw error;
 
@@ -237,6 +250,7 @@ export default function Notebook() {
 
   return (
     <GestureHandlerRootView style={styles.safeArea}>
+      <Header title="Libreta" showBackButton={false} />
       <ScrollView style={styles.container}>
         {/* Quick access weight/height */}
         <View style={styles.metricsCard}>
@@ -285,7 +299,7 @@ export default function Notebook() {
 
         <View style={styles.headerRow}>
           <View style={{ flexDirection: 'column' }}>
-            <Text style={styles.activityTitle}>Sesiones Entrenamiento</Text>
+            <Text style={styles.activityTitle}>Editar Sesiones</Text>
             <Text style={styles.activitySubtitle}> Elige tu sesión 👇 o agrega una sesión 👉</Text>
           </View>
           <TouchableOpacity
@@ -296,29 +310,32 @@ export default function Notebook() {
             <MaterialCommunityIcons name="plus-thick" size={28} color="white" />
           </TouchableOpacity>
         </View>
-
         {/* Filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          {types.map((type) => {
-            const active = selectedType === type;
-            return (
-              <TouchableOpacity
-                key={type}
-                onPress={() => setSelectedType(type)}
-                activeOpacity={0.8}
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {type}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <View style={styles.chipsHeaderRow}>
+          <Text style={styles.chipsLabel}>Tipo :</Text>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsRow}
+          >
+            {types.map((type) => {
+              const active = selectedType === type;
+              return (
+                <TouchableOpacity
+                  key={type}
+                  onPress={() => setSelectedType(type)}
+                  activeOpacity={0.8}
+                  style={[styles.chip, active && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {loading ? (
           <ActivityIndicator size="large" color="#F34E3A" style={{ marginTop: 40 }} />
@@ -334,27 +351,31 @@ export default function Notebook() {
                     key={session.id}
                     title={session.name}
                     image={getImageForTrainingType(session.training_type.name)}
-                    onPress={() => handleEdit(session.id)}
+                    onPress={() => openEditModal(session.id, session.name)}
+                    disabled={true}
                     rightActions={
                       <>
                         <TouchableOpacity
-                          onPress={() => handleEdit(session.id)}
+                          onPress={() => openEditModal(session.id, session.name)}
                           style={styles.iconButton}
                           activeOpacity={0.7}
                         >
                           <MaterialCommunityIcons name="pencil" size={18} color="#ffffff" />
                         </TouchableOpacity>
-
                         <TouchableOpacity
                           onPress={() => handleDelete(session.id)}
-                          style={[styles.iconButton, { backgroundColor: '#7f1d1d' }]}
+                          style={[styles.iconButton, { backgroundColor: '#7f1d1d', marginLeft: 10 }]}
                           activeOpacity={0.7}
                           disabled={deletingId === session.id}
                         >
                           {deletingId === session.id ? (
                             <ActivityIndicator size="small" color="#ffffff" />
                           ) : (
-                            <MaterialCommunityIcons name="trash-can-outline" size={18} color="#ffffff" />
+                            <MaterialCommunityIcons
+                              name="trash-can-outline"
+                              size={18}
+                              color="#ffffff"
+                            />
                           )}
                         </TouchableOpacity>
                       </>
@@ -366,6 +387,20 @@ export default function Notebook() {
           </View>
         )}
       </ScrollView>
+      <EditSessionExercisesModal
+        visible={editModalVisible}
+        sessionId={editSessionId}
+        sessionName={editSessionName}
+        onClose={() => {
+          setEditModalVisible(false);
+          setEditSessionId(null);
+        }}
+        onSaved={() => {
+          // optional: re-fetch sessions or just leave as is
+          // fetchData() if you extract it out of useEffect
+        }}
+      />
+
     </GestureHandlerRootView>
   );
 }
@@ -385,7 +420,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
   },
   activityTitle: {
     color: 'white',
@@ -411,9 +445,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  chipsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  chipsLabel: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 8,
+  },
   chipsRow: {
-    paddingVertical: 16,
+    paddingVertical: 0,
     gap: 8,
+    // make chips container use remaining horizontal space
+    paddingRight: 4,
   },
   chip: {
     paddingHorizontal: 14,
@@ -422,6 +470,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#2b2b2b',
+    marginRight: 6,
   },
   chipActive: {
     backgroundColor: '#F34E3A',
@@ -435,6 +484,7 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: 'white',
   },
+
   list: {
     marginBottom: 40,
   },
@@ -467,7 +517,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    marginBottom: 16,
+    marginBottom: 40,
   },
   metricsTitle: {
     color: 'white',

@@ -90,7 +90,7 @@ export default function SettingsScreen() {
   return (
     <GestureHandlerRootView style={styles.safeArea}>
       <View>
-        <Header title="Configuraciónes" />
+        <Header title="Configuraciónes" showBackButton={false} />
 
         {/* Avatar */}
         <Image source={{ uri: avatarUrl  }} style={styles.avatar} />

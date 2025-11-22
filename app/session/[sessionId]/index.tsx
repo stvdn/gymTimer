@@ -71,6 +71,7 @@ export default function SessionId() {
             reps,
             weight,
             position,
+            rest_time,
             exercises:exercises (
               id,
               name,
@@ -108,7 +109,7 @@ export default function SessionId() {
           sets: item.sets,
           reps: item.reps,
           weight: item.weight,
-          rest_time: restMap[item.exercises.id] ?? null,
+          rest_time: item.rest_time ? item.rest_time : (restMap[item.exercises.id] ?? null),
           position: item.position,
         }));
 
@@ -221,39 +222,54 @@ export default function SessionId() {
       setDuration(0);
       setWatcherKey(prev => prev + 1); // force remount 
       await cancelScheduledNotification();
-      router.replace('/Home');
+      router.replace('/');
     }
   };
 
   const renderExercise = ({ item }: { item: Exercise }) => {
     const isActive = item.id === currentExercise?.id;
 
-    return (isActive ? (
-      <>
-       <View style={[styles.exerciseItem, isActive && styles.activeExerciseItem]}>
-        <Text style={styles.currentExerciseName}>{currentExercise.name}</Text>
-        <Text style={styles.setInfo}>
-          Set {(progress[currentExercise.id].currentSet) + 1} de {progress[currentExercise.id].totalSets}
-        </Text>
-        <Text style={styles.motivationalText}>
-        {currentExercise.position === exercises.length - 1
-          ? '¡Último ejercicio! ¡Da lo mejor de ti!'
-          : 'Toma aire, tu próximo reto te espera 👇'}  
-        </Text>
-      </View>
-      </>
-    ) : (
-      <>
-        <View style={[styles.exerciseItem, isActive && styles.activeExerciseItem]}>
-          <Text style={styles.exerciseTitle}>{item.name}</Text>
-          <Text style={styles.exerciseDetails}>
-          {item.sets} sets de {item.reps ?? 0} repeticiones{item.weight ? `, peso de ${item.weight}kg` : ''}
+    if (isActive && currentExercise) {
+      const prog = progress[currentExercise.id] ?? {
+        exerciseId: currentExercise.id,
+        currentSet: 0,
+        totalSets: currentExercise.sets ?? 0,
+      };
+
+      const isLastExercise = currentExercise.position === exercises.length - 1;
+      const isLastSet = prog.currentSet + 1 >= prog.totalSets && prog.totalSets > 0;
+
+      return (
+        <View style={[styles.exerciseItem, styles.activeExerciseItem]}>
+          <Text style={styles.currentExerciseName}>{currentExercise.name}</Text>
+          <Text style={styles.setInfo}>
+            Set {prog.currentSet + 1} de {prog.totalSets}
+          </Text>
+
+          <Text style={styles.motivationalText}>
+            {isLastExercise && isLastSet
+              ? '¡Solo un paso más! ¡Dalo todo! 💪'
+              : isLastSet
+                ? 'Toma aire, tu próximo reto te espera 👇'
+                : 'Descansa y prepárate para el siguiente set 🔋'
+            }
           </Text>
         </View>
-      </>
-    )
+      );
+    }
+
+    // Non‑active exercises
+    return (
+      <View style={styles.exerciseItem}>
+        <Text style={styles.exerciseTitle}>{item.name}</Text>
+        <Text style={styles.exerciseDetails}>
+          {item.sets} sets de {item.reps ?? 0} repeticiones
+          {item.weight ? `, peso de ${item.weight}kg` : ''}
+        </Text>
+      </View>
     );
   };
+
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

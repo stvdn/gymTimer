@@ -4,18 +4,22 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type HeaderProps = {
   title: string;
+  showBackButton?: boolean;
 };
 
 export default function Header({
-  title
+  title,
+  showBackButton = true,
 }: HeaderProps) {
   const router = useRouter();
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backIcon}>‹</Text>
-      </TouchableOpacity>
+      {showBackButton ? (
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+      ) : (<View style={styles.placeholder} />)}
       <Text style={styles.title}>{title}</Text>
       <View style={styles.placeholder} />
     </View>
@@ -29,7 +33,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 40,
+    marginBottom: 20,
   },
   backButton: {
     width: 44,
